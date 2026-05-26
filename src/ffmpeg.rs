@@ -99,6 +99,44 @@ pub fn build_concat_copy_args(concat_list: &Path, output: &Path) -> Vec<OsString
     ]
 }
 
+pub fn build_remux_to_ts_args(input: &Path, output: &Path) -> Vec<OsString> {
+    vec![
+        "-hide_banner".into(),
+        "-nostdin".into(),
+        "-y".into(),
+        "-i".into(),
+        input.as_os_str().to_os_string(),
+        "-c".into(),
+        "copy".into(),
+        "-f".into(),
+        "mpegts".into(),
+        output.as_os_str().to_os_string(),
+    ]
+}
+
+pub fn build_ts_concat_to_output_args(
+    concat_list: &Path,
+    output: &Path,
+    output_format: &str,
+) -> Vec<OsString> {
+    vec![
+        "-hide_banner".into(),
+        "-nostdin".into(),
+        "-y".into(),
+        "-f".into(),
+        "concat".into(),
+        "-safe".into(),
+        "0".into(),
+        "-i".into(),
+        concat_list.as_os_str().to_os_string(),
+        "-c".into(),
+        "copy".into(),
+        "-f".into(),
+        output_format.into(),
+        output.as_os_str().to_os_string(),
+    ]
+}
+
 pub fn build_concat_encode_args(concat_list: &Path, output: &Path, ext: &str) -> Vec<OsString> {
     let format = match ext {
         "flv" => "flv",
