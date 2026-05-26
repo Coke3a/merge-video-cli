@@ -70,6 +70,16 @@ fn run() -> Result<()> {
     std::fs::create_dir_all(&cli.output)
         .with_context(|| format!("Failed to create output directory: {}", cli.output.display()))?;
 
+    for entry in std::fs::read_dir(&cli.output)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some(&ext) {
+            std::fs::remove_file(&path)
+                .with_context(|| format!("Failed to remove old output: {}", path.display()))?;
+            eprintln!("Removed old output: {}", path.file_name().unwrap_or_default().to_string_lossy());
+        }
+    }
+
     merge::merge_videos(&files, &output_path)?;
 
     let size = std::fs::metadata(&output_path)
