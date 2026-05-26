@@ -1,6 +1,8 @@
 use std::ffi::OsString;
 use std::path::Path;
-use std::process::ExitStatus;
+use std::process::{Command, ExitStatus, Stdio};
+
+const STDERR_TAIL_BYTES: usize = 8 * 1024;
 
 #[derive(Debug)]
 pub struct FfmpegError {
@@ -21,11 +23,63 @@ impl std::fmt::Display for FfmpegError {
 impl std::error::Error for FfmpegError {}
 
 pub fn check_ffmpeg_available() -> anyhow::Result<()> {
-    todo!()
+    let output = std::process::Command::new("ffmpeg")
+        .arg("-version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    match output {
+        Ok(status) if status.success() => Ok(()),
+        Ok(status) => Err(anyhow::anyhow!(
+            "ffmpeg exited with status {}. Please install ffmpeg (https://ffmpeg.org/download.html)",
+            status
+        )),
+        Err(_) => Err(anyhow::anyhow!(
+            "ffmpeg not found. Please install ffmpeg (https://ffmpeg.org/download.html)"
+        )),
+    }
 }
 
-pub fn run_ffmpeg(_args: Vec<OsString>) -> Result<(), FfmpegError> {
-    todo!()
+pub fn run_ffmpeg(args: Vec<OsString>) -> Result<(), FfmpegError> {
+    let mut child = Command::new("ffmpeg")
+        .args(&args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|err| FfmpegError {
+            stage: "spawn",
+            status: None,
+            stderr: err.to_string(),
+        })?;
+
+    let stderr_bytes = child
+        .stderr
+        .take()
+        .map(|mut pipe| {
+            let mut buf = Vec::new();
+            std::io::Read::read_to_end(&mut pipe, &mut buf).ok();
+            buf
+        })
+        .unwrap_or_default();
+
+    let status = child.wait().map_err(|err| FfmpegError {
+        stage: "wait",
+        status: None,
+        stderr: err.to_string(),
+    })?;
+
+    if !status.success() {
+        let start = stderr_bytes.len().saturating_sub(STDERR_TAIL_BYTES);
+        let tail = String::from_utf8_lossy(&stderr_bytes[start..]).trim().to_string();
+        return Err(FfmpegError {
+            stage: "exit",
+            status: Some(status),
+            stderr: tail,
+        });
+    }
+
+    Ok(())
 }
 
 pub fn build_concat_copy_args(concat_list: &Path, output: &Path) -> Vec<OsString> {
