@@ -12,7 +12,7 @@ Supports `.ts` and `.flv` files. Tries lossless stream copy first for speed; fal
 ## Installation
 
 ```bash
-git clone https://github.com/your-username/merge-video.git
+git clone https://github.com/Coke3a/merge-video.git
 cd merge-video
 cargo build --release
 ```
