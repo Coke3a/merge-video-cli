@@ -25,7 +25,8 @@ fn merge_via_ts_intermediate(files: &[PathBuf], output_path: &Path, output_forma
     for (i, file) in files.iter().enumerate() {
         let ts_name = format!("{:06}.ts", i);
         let ts_path = tmp_dir.path().join(&ts_name);
-        let args = ffmpeg::build_remux_to_ts_args(file, &ts_path);
+        let has_audio = ffmpeg::probe_has_audio(file);
+        let args = ffmpeg::build_remux_to_ts_args(file, &ts_path, has_audio);
         ffmpeg::run_ffmpeg(args).map_err(|err| {
             anyhow::anyhow!(
                 "Failed to remux '{}' to TS: {}",

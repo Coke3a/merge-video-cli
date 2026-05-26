@@ -99,19 +99,67 @@ pub fn build_concat_copy_args(concat_list: &Path, output: &Path) -> Vec<OsString
     ]
 }
 
-pub fn build_remux_to_ts_args(input: &Path, output: &Path) -> Vec<OsString> {
-    vec![
+pub fn build_remux_to_ts_args(input: &Path, output: &Path, has_audio: bool) -> Vec<OsString> {
+    let mut args = vec![
         "-hide_banner".into(),
         "-nostdin".into(),
         "-y".into(),
+    ];
+
+    if !has_audio {
+        args.extend_from_slice(&[
+            "-f".into(),
+            "lavfi".into(),
+            "-i".into(),
+            "anullsrc=r=48000:cl=stereo".into(),
+        ]);
+    }
+
+    args.extend_from_slice(&[
         "-i".into(),
         input.as_os_str().to_os_string(),
-        "-c".into(),
-        "copy".into(),
+    ]);
+
+    if has_audio {
+        args.extend_from_slice(&[
+            "-c".into(),
+            "copy".into(),
+        ]);
+    } else {
+        args.extend_from_slice(&[
+            "-map".into(), "1:v:0".into(),
+            "-map".into(), "0:a:0".into(),
+            "-c:v".into(), "copy".into(),
+            "-c:a".into(), "aac".into(),
+            "-b:a".into(), "160k".into(),
+            "-shortest".into(),
+        ]);
+    }
+
+    args.extend_from_slice(&[
         "-f".into(),
         "mpegts".into(),
         output.as_os_str().to_os_string(),
-    ]
+    ]);
+
+    args
+}
+
+pub fn probe_has_audio(path: &Path) -> bool {
+    let output = Command::new("ffprobe")
+        .args(["-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0"])
+        .arg(path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output();
+
+    match output {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            stdout.lines().any(|line| line.trim() == "audio")
+        }
+        Err(_) => false,
+    }
 }
 
 pub fn build_ts_concat_to_output_args(
