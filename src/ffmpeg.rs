@@ -110,8 +110,6 @@ pub fn build_concat_encode_args(concat_list: &Path, output: &Path, ext: &str) ->
         "-nostdin".into(),
         "-y".into(),
         "-f".into(),
-        format.into(),
-        "-f".into(),
         "concat".into(),
         "-safe".into(),
         "0".into(),
@@ -129,6 +127,8 @@ pub fn build_concat_encode_args(concat_list: &Path, output: &Path, ext: &str) ->
         "aac".into(),
         "-b:a".into(),
         "160k".into(),
+        "-f".into(),
+        format.into(),
         output.as_os_str().to_os_string(),
     ]
 }
@@ -190,7 +190,7 @@ mod tests {
         let args = build_concat_encode_args(&list, &output, "flv");
         let strs = args_to_strings(&args);
 
-        let f_pos = strs.iter().position(|s| s == "-f").unwrap();
+        let f_pos = strs.iter().rposition(|s| s == "-f").unwrap();
         assert_eq!(strs[f_pos + 1], "flv");
     }
 
@@ -201,7 +201,7 @@ mod tests {
         let args = build_concat_encode_args(&list, &output, "ts");
         let strs = args_to_strings(&args);
 
-        let f_pos = strs.iter().position(|s| s == "-f").unwrap();
+        let f_pos = strs.iter().rposition(|s| s == "-f").unwrap();
         assert_eq!(strs[f_pos + 1], "mpegts");
     }
 
